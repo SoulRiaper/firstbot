@@ -1,6 +1,7 @@
 package main
 
 import (
+	"firstbot/internal/service/product"
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
 	"github.com/joho/godotenv"
 	"log"
@@ -15,6 +16,8 @@ func main() {
 		log.Panic(err)
 	}
 
+	productService := product.NewProductService()
+
 	bot.Debug = true
 	log.Printf("Authorized as account %s", bot.Self.UserName)
 
@@ -27,9 +30,32 @@ func main() {
 		if update.Message != nil {
 			log.Printf("User %v, SEND: %s", update.Message.Chat.ID, update.Message.Text)
 
-			msg := tgbotapi.NewMessage(update.Message.Chat.ID, "You wrote: "+update.Message.Text)
-			//msg.ReplyToMessageID = update.Message.MessageID
-			bot.Send(msg)
+			switch update.Message.Command() {
+
+			case "help":
+				getHelp(bot, update.Message)
+			case "list":
+				getProductList(bot, update.Message, productService)
+			}
 		}
 	}
+}
+
+func getHelp(bot *tgbotapi.BotAPI, inputMessage *tgbotapi.Message) {
+	msg := tgbotapi.NewMessage(inputMessage.Chat.ID,
+		"/help - help\n"+
+			"/list - product list",
+	)
+	bot.Send(msg)
+}
+
+func getProductList(bot *tgbotapi.BotAPI, inputMessage *tgbotapi.Message, service *product.ProductService) {
+	for _, productL := range service.List() {
+		msg := tgbotapi.NewMessage(inputMessage.Chat.ID,
+			"Your product: "+productL.Title,
+		)
+		bot.Send(msg)
+
+	}
+
 }
